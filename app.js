@@ -4,8 +4,18 @@ let newGameBtn = document.querySelector("#new-btn");
 let msgContainer = document.querySelector(".msg-container");
 let msg = document.querySelector("#msg");
 
-let turnO = true; //playerX, playerO
-let count = 0; //To Track Draw
+// New Elements
+let turnText = document.querySelector("#turn-text");
+let turnDot = document.querySelector("#turn-dot");
+let scoreXEl = document.getElementById("score-x");
+let scoreOEl = document.getElementById("score-o");
+let scoreDrawEl = document.getElementById("score-draw");
+
+let turnO = false; // Start with X (standard rules)
+let count = 0; // To Track Draw
+let gameActive = true;
+
+let scores = { x: 0, o: 0, draw: 0 };
 
 const winPatterns = [
   [0, 1, 2],
@@ -18,38 +28,85 @@ const winPatterns = [
   [6, 7, 8],
 ];
 
+const updateTurnIndicator = () => {
+  if (turnO) {
+    turnText.innerText = "Player O's Turn";
+    turnDot.style.backgroundColor = "var(--accent-o)";
+  } else {
+    turnText.innerText = "Player X's Turn";
+    turnDot.style.backgroundColor = "var(--accent-x)";
+  }
+};
+
+const updateScoreboard = () => {
+  scoreXEl.innerText = scores.x;
+  scoreOEl.innerText = scores.o;
+  scoreDrawEl.innerText = scores.draw;
+};
+
 const resetGame = () => {
-  turnO = true;
+  turnO = false;
   count = 0;
+  gameActive = true;
   enableBoxes();
+  msgContainer.classList.remove("show");
   msgContainer.classList.add("hide");
+  updateTurnIndicator();
 };
 
 boxes.forEach((box) => {
   box.addEventListener("click", () => {
+    if (!gameActive) return;
+
     if (turnO) {
-      //playerO
+      // Player O
       box.innerText = "O";
+      box.classList.add("o");
       turnO = false;
     } else {
-      //playerX
+      // Player X
       box.innerText = "X";
+      box.classList.add("x");
       turnO = true;
     }
     box.disabled = true;
     count++;
+    updateTurnIndicator();
 
-    let isWinner = checkWinner();
+    let winningPattern = checkWinner();
 
-    if (count === 9 && !isWinner) {
-      gameDraw();
+    if (winningPattern) {
+        // We found a winner
+        let winner = boxes[winningPattern[0]].innerText;
+        handleWin(winner, winningPattern);
+    } else if (count === 9) {
+        gameDraw();
     }
   });
 });
 
+const handleWin = (winner, pattern) => {
+    gameActive = false;
+    
+    // Highlight winning cells
+    pattern.forEach(index => {
+        boxes[index].classList.add("win");
+    });
+
+    // Update Score
+    if(winner === "X") scores.x++;
+    else scores.o++;
+    updateScoreboard();
+
+    showWinner(winner);
+};
+
 const gameDraw = () => {
-  msg.innerText = `Game was a Draw.`;
+  scores.draw++;
+  updateScoreboard();
+  msg.innerText = `It's a Draw! 🤝`;
   msgContainer.classList.remove("hide");
+  msgContainer.classList.add("show");
   disableBoxes();
 };
 
@@ -63,12 +120,18 @@ const enableBoxes = () => {
   for (let box of boxes) {
     box.disabled = false;
     box.innerText = "";
+    // Remove old classes
+    box.classList.remove("x", "o", "win");
   }
 };
 
 const showWinner = (winner) => {
-  msg.innerText = `Congratulations, Winner is ${winner}`;
-  msgContainer.classList.remove("hide");
+  msg.innerText = `🎉 Player ${winner} Wins!`;
+  // Small delay so users can see the winning line animation before the modal
+  setTimeout(() => {
+    msgContainer.classList.remove("hide");
+    msgContainer.classList.add("show");
+  }, 800);
   disableBoxes();
 };
 
@@ -80,12 +143,15 @@ const checkWinner = () => {
 
     if (pos1Val != "" && pos2Val != "" && pos3Val != "") {
       if (pos1Val === pos2Val && pos2Val === pos3Val) {
-        showWinner(pos1Val);
-        return true;
+        return pattern; // Return the winning pattern indices
       }
     }
   }
+  return null;
 };
 
 newGameBtn.addEventListener("click", resetGame);
 resetBtn.addEventListener("click", resetGame);
+
+// Initialize
+updateTurnIndicator();
